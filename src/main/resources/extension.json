@@ -1,0 +1,8 @@
+{
+  "entrypoint": "de.geolykt.galimirc.GalimulatorIRC",
+  "name": "GalimulatorIRC",
+  "version": "0.0.1-SNAPSHOT",
+  "dependencies": [
+    "StarloaderAPI"
+  ]
+}
