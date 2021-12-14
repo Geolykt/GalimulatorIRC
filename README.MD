@@ -28,3 +28,9 @@ The goal of this client is to be the IRC Client of my dreams
 - automatically request backlog from irssiproxy, if existing
 - send monitored messages in galimulator's bulletin log
 - leaving networks and channels
+
+## Screenshots
+
+<img src="https://files.geolykt.de/GalimIRC-example-1.png" />
+<img src="https://files.geolykt.de/GalimIRC-example-2.png" />
+<img src="https://files.geolykt.de/GalimIRC-example-3.png" />
