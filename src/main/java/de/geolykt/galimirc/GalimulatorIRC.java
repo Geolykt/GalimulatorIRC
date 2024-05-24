@@ -1,12 +1,12 @@
 package de.geolykt.galimirc;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.LocalTime;
@@ -71,26 +71,26 @@ public class GalimulatorIRC extends Extension {
     public boolean criticalNotification = false;
 
     void startClients() {
-        for (Network net : serverlist.getNetworks()) {
+        for (Network net : this.serverlist.getNetworks()) {
             if (net.getServers().isEmpty()) {
-                getLogger().warn("Network {} does not have a server declared!", net.name);
+                this.getLogger().warn("Network {} does not have a server declared!", net.name);
                 continue;
             }
             try {
-                setupClient(net);
+                this.setupClient(net);
             } catch (Exception e) {
-                getLogger().error("Unable to start client instance for network " + net.name, e);
+                this.getLogger().error("Unable to start client instance for network " + net.name, e);
             }
         }
     }
 
     private void setupClient(Network network) throws Exception {
-        if (nick.isBlank()) {
+        if (this.nick.isEmpty()) {
             return;
         }
         Server server = network.getServers().get(ThreadLocalRandom.current().nextInt(network.getServers().size()));
         Client.Builder ircClientBuilder = Client.builder();
-        ircClientBuilder.name("GalimulatorIRC-bot-" + network.name).nick(name).realName(realname).user(name);
+        ircClientBuilder.name("GalimulatorIRC-bot-" + network.name).nick(this.name).realName(this.realname).user(this.name);
         ircClientBuilder.server().port(server.port(), server.security()).password(server.password())
             .host(server.address());
         Client ircClient = ircClientBuilder.buildAndConnect();
@@ -108,9 +108,9 @@ public class GalimulatorIRC extends Extension {
             ircClient.addChannel(channel.name());
         }
         ircClient.getEventManager().registerEventListener(new InboundEventListener(network, this));
-        ircClients.add(ircClient);
-        ircNetworkClients.put(network, ircClient);
-        getLogger().info("Client set up for " + network.name);
+        this.ircClients.add(ircClient);
+        this.ircNetworkClients.put(network, ircClient);
+        this.getLogger().info("Client set up for " + network.name);
     }
 
     @Override
@@ -120,46 +120,47 @@ public class GalimulatorIRC extends Extension {
 
     @SuppressWarnings("null")
     public void loadConfig(Path configFile) {
-        File file = configFile.toFile();
-        if (!file.exists()) {
-            getLogger().warn("Config file does not exist!");
-            errorMessage = "Unable to find the galimulatorIRC config file. It is located in: " + configFile.toAbsolutePath().toString();
+        if (Files.notExists(configFile)) {
+            this.getLogger().warn("Config file does not exist!");
+            this.errorMessage = "Unable to find the galimulatorIRC config file. It is located in: " + configFile.toAbsolutePath().toString();
             return;
         }
         final JSONObject jsonData;
-        try (FileInputStream fis = new FileInputStream(file)) {
-            jsonData = new JSONObject(new String(fis.readAllBytes(), StandardCharsets.UTF_8));
+        try {
+            jsonData = new JSONObject(new String(Files.readAllBytes(configFile), StandardCharsets.UTF_8));
         } catch (IOException | JSONException e) {
             StringWriter sw = new StringWriter();
             e.printStackTrace(new PrintWriter(sw));
-            errorMessage = "Unable to read config file:\n" + sw.toString();
-            getLogger().error("Unable to read config file: ", e);
+            this.errorMessage = "Unable to read config file:\n" + sw.toString();
+            this.getLogger().error("Unable to read config file: ", e);
             return;
         }
 
-        nick = jsonData.getString("nick");
-        name = jsonData.optString("name", nick);
-        realname = jsonData.optString("realname", "Galimulator IRC");
-        desktopNotifications = jsonData.optBoolean("desktop-notify", true);
-        criticalNotification = jsonData.optBoolean("critical-notify", false);
+        this.nick = jsonData.getString("nick");
+        this.name = jsonData.optString("name", this.nick);
+        this.realname = jsonData.optString("realname", "Galimulator IRC");
+        this.desktopNotifications = jsonData.optBoolean("desktop-notify", true);
+        this.criticalNotification = jsonData.optBoolean("critical-notify", false);
 
         for (Object o : jsonData.getJSONArray("networks")) {
-            if (o instanceof JSONObject network) {
+            if (o instanceof JSONObject) {
+                JSONObject network = (JSONObject) o;
                 Optional<AuthentificationDetails> auth;
                 if (network.has("auth")) {
                     JSONObject jsonAuth = network.getJSONObject("auth");
                     boolean sasl = jsonAuth.optBoolean("sasl", false);
-                    Optional<String> nickservService = NullUtils.asOptional(jsonAuth.optString("nickservSerivce", "NickServ"));
+                    Optional<String> nickservService = Optional.of(jsonAuth.optString("nickservSerivce", "NickServ"));
                     String password = jsonAuth.getString("password");
                     String accountName = jsonAuth.getString("account");
-                    auth = NullUtils.asOptional(new AuthentificationDetails(sasl, accountName, password, nickservService));
+                    auth = Optional.of(new AuthentificationDetails(sasl, accountName, password, nickservService));
                 } else {
-                    auth = NullUtils.emptyOptional();
+                    auth = Optional.empty();
                 }
                 Network net = new Network(network.getString("name"), auth);
                 if (network.has("servers")) {
                     for (Object o2 : network.getJSONArray("servers")) {
-                        if (o2 instanceof JSONObject server) {
+                        if (o2 instanceof JSONObject) {
+                            JSONObject server = (JSONObject) o2;
                             boolean isSecure = server.optBoolean("secure", true);
                             int port = server.getInt("port");
                             String address = server.getString("address");
@@ -173,13 +174,14 @@ public class GalimulatorIRC extends Extension {
                 }
                 if (network.has("channels")) {
                     for (Object o2 : network.getJSONArray("channels")) {
-                        if (o2 instanceof JSONObject channel) {
+                        if (o2 instanceof JSONObject) {
+                            JSONObject channel = (JSONObject) o2;
                             String channelName = NullUtils.requireNotNull(channel.getString("name"));
                             net.addChannel(new Channel(channelName, net, new ChannelChat(this, net, channelName)));
                         }
                     }
                 }
-                serverlist.addNetwork(net);
+                this.serverlist.addNetwork(net);
             }
         }
     }
@@ -187,15 +189,15 @@ public class GalimulatorIRC extends Extension {
     public void saveConfig(Path configFile) {
         final JSONObject jsonData = new JSONObject();
 
-        jsonData.put("nick", nick);
-        jsonData.put("name", name);
-        jsonData.put("realname", realname);
-        jsonData.put("desktop-notify", desktopNotifications);
-        jsonData.put("critical-notify", criticalNotification);
+        jsonData.put("nick", this.nick);
+        jsonData.put("name", this.name);
+        jsonData.put("realname", this.realname);
+        jsonData.put("desktop-notify", this.desktopNotifications);
+        jsonData.put("critical-notify", this.criticalNotification);
 
         JSONArray networks = new JSONArray();
         jsonData.put("networks", networks);
-        for (Network net : serverlist.getNetworks()) {
+        for (Network net : this.serverlist.getNetworks()) {
             JSONObject netJson = new JSONObject();
             networks.put(netJson);
             netJson.put("name", net.name);
@@ -228,8 +230,8 @@ public class GalimulatorIRC extends Extension {
 
         File file = configFile.toFile();
         if (!file.exists()) {
-            getLogger().warn("Config file does not exist!");
-            errorMessage = "Unable to find the galimulatorIRC config file. It is located in: " + configFile.toAbsolutePath().toString();
+            this.getLogger().warn("Config file does not exist!");
+            this.errorMessage = "Unable to find the galimulatorIRC config file. It is located in: " + configFile.toAbsolutePath().toString();
             return;
         }
         try (FileOutputStream fos = new FileOutputStream(file)) {
@@ -237,8 +239,8 @@ public class GalimulatorIRC extends Extension {
         } catch (IOException e) {
             StringWriter sw = new StringWriter();
             e.printStackTrace(new PrintWriter(sw));
-            errorMessage = "Unable to read config file:\n" + sw.toString();
-            getLogger().error("Unable to read config file: ", e);
+            this.errorMessage = "Unable to read config file:\n" + sw.toString();
+            this.getLogger().error("Unable to read config file: ", e);
             return;
         }
     }
@@ -253,7 +255,7 @@ public class GalimulatorIRC extends Extension {
             }
             return;
         }
-        Network network = serverlist.getNetworkByName(NullUtils.requireNotNull(tokens[1]));
+        Network network = this.serverlist.getNetworkByName(NullUtils.requireNotNull(tokens[1]));
         if (network == null) {
             Drawing.toast("Unable to find network [GRAY]" + tokens[1] + "[]. Are you sure that you are connected to it?");
             return;
@@ -285,7 +287,7 @@ public class GalimulatorIRC extends Extension {
             }
             String channelName = NullUtils.requireNotNull(tokens[2]);
             network.addChannel(new Channel(channelName, network, new ChannelChat(this, network, channelName)));
-            Client cl = ircNetworkClients.get(network);
+            Client cl = this.ircNetworkClients.get(network);
             cl.addChannel(channelName);
         } else if (command.startsWith("/monitor")) {
             handleMonitorCommand(command, false);
@@ -298,7 +300,7 @@ public class GalimulatorIRC extends Extension {
                 return;
             }
             String name = tokens[1];
-            if (serverlist.getNetworkByName(NullUtils.requireNotNull(name)) != null) {
+            if (this.serverlist.getNetworkByName(NullUtils.requireNotNull(name)) != null) {
                 Drawing.toast("A network by that name already exists!");
                 return;
             }
@@ -306,7 +308,7 @@ public class GalimulatorIRC extends Extension {
             int port = Integer.valueOf(tokens[3]);
             boolean ssl = port == 6697;
             if (tokens.length > 4) {
-                if (tokens[4].toLowerCase(Locale.ROOT).equals("yes")) { // DAU
+                if (tokens[4].toLowerCase(Locale.ROOT).equals("yes") || tokens[4].equalsIgnoreCase("y")) { // DAU
                     ssl = true;
                 } else {
                     ssl = Boolean.valueOf(tokens[4]);
@@ -315,9 +317,9 @@ public class GalimulatorIRC extends Extension {
             Server server = new Server(NullUtils.requireNotNull(address), port,
                     ssl ? SecurityType.SECURE : SecurityType.INSECURE,
                     tokens.length > 5 ? tokens[5] : null);
-            requestAuthentificationDetails(auth -> {
+            this.requestAuthentificationDetails(auth -> {
                 Network network = new Network(NullUtils.requireNotNull(name), NullUtils.requireNotNull(auth));
-                serverlist.addNetwork(network);
+                this.serverlist.addNetwork(network);
                 network.addServer(server);
                 try {
                     setupClient(network);
@@ -327,10 +329,10 @@ public class GalimulatorIRC extends Extension {
                     Drawing.toast("Unable to setup client. Look in the logs for further information");
                 }
             });
-        } else if (current.isEmpty()) {
+        } else if (!current.isPresent()) {
             Drawing.toast("Cannot send command as there is no selected channel to send the command in. (click on a channel on the left)");
         } else {
-            Client client = ircNetworkClients.get(current.get().chatNet());
+            Client client = this.ircNetworkClients.get(current.get().chatNet());
             client.sendMessage(current.get().name(), command);
         }
     }
@@ -352,7 +354,7 @@ public class GalimulatorIRC extends Extension {
                         authDetailsOut.accept(Optional.empty());
                         return;
                     }
-                    AuthentificationDetails authDetails = new AuthentificationDetails(sasl.equalsIgnoreCase("yes") || Boolean.valueOf(sasl), account, password, NullUtils.asOptional("NickServ"));
+                    AuthentificationDetails authDetails = new AuthentificationDetails(sasl.equalsIgnoreCase("yes") || Boolean.valueOf(sasl), account, password, Optional.of("NickServ"));
                     authDetailsOut.accept(Optional.of(authDetails));
                 }).build();
             }).build();
@@ -360,15 +362,15 @@ public class GalimulatorIRC extends Extension {
     }
 
     public void handleMessage(@NotNull String message, @NotNull Optional<Channel> current) {
-        if (message.isBlank()) {
+        if (message.isEmpty()) {
             return;
         }
         if (message.startsWith("/")) {
-            handleCommand(message, current);
-        } else if (current.isEmpty()) {
+            this.handleCommand(message, current);
+        } else if (!current.isPresent()) {
             Drawing.toast("Cannot send message as there is no selected channel to send the message in. (click on a channel on the left)");
         } else {
-            Client client = ircNetworkClients.get(current.get().chatNet());
+            Client client = this.ircNetworkClients.get(current.get().chatNet());
             client.sendMessage(current.get().name(), message);
             // echo back the message to the client
             current.get().chat().addMessage(message, NullUtils.requireNotNull(client.getNick()), NullUtils.requireNotNull(LocalTime.now(Clock.systemDefaultZone())));

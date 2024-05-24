@@ -75,7 +75,7 @@ public class InboundEventListener {
         User user = NullUtils.requireNotNull(event.getActor());
         TemporalAccessor timestamp = NullUtils.requireNotNull(LocalTime.now(Clock.systemDefaultZone()));
         String message = ColorConverter.toGDX(NullUtils.requireNotNull(event.getMessage()));
-        if (event.getAffectedChannel().isEmpty()) {
+        if (!event.getAffectedChannel().isPresent()) {
             event.getActor().getChannels().forEach(channelName -> {
                 Optional<Channel> channel = net.getChannelByName(NullUtils.requireNotNull(channelName.toLowerCase(Locale.ROOT)));
                 if (channel.isPresent()) {

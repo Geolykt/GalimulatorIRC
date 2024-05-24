@@ -2,9 +2,10 @@ package de.geolykt.galimirc;
 
 import org.jetbrains.annotations.NotNull;
 
-import de.geolykt.starloader.api.gui.Dynbind;
+import de.geolykt.starloader.api.NamespacedKey;
+import de.geolykt.starloader.api.gui.Keybind;
 
-public class OpenIRCWindowKeybind implements Dynbind {
+public class OpenIRCWindowKeybind implements Keybind {
 
     @NotNull
     private GalimulatorIRC extension;
@@ -14,27 +15,19 @@ public class OpenIRCWindowKeybind implements Dynbind {
     }
 
     @Override
-    public @NotNull String getDescription() {
-        return "Opens the IRC Client window";
+    @NotNull
+    public String getDescription() {
+        return "Open the IRC Client window";
     }
 
     @Override
-    public @NotNull String getKeyDescription() {
-        return "Shift + I";
+    public void executeAction() {
+        this.extension.guiManager.open();
     }
 
     @Override
-    public boolean isValidChar(char character) {
-        return character == 'I';
-    }
-
-    @Override
-    public boolean isValidKeycode(int key) {
-        return false;
-    }
-
-    @Override
-    public void performAction() {
-        extension.guiManager.open();
+    @NotNull
+    public NamespacedKey getID() {
+        return new NamespacedKey(this.extension, "keybind_open_irc");
     }
 }

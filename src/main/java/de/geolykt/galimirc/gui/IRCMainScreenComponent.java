@@ -36,14 +36,44 @@ import de.geolykt.starloader.api.resource.DataFolderProvider;
 
 public class IRCMainScreenComponent implements ScreenComponent, ReactiveComponent {
 
-    private static record ButtonPositioningMetaEntry(@NotNull Runnable action, float x, float y, float width, float height) { }
+    private static class ButtonPositioningMetaEntry {
+        @NotNull
+        private final Runnable action;
+        private final float x;
+        private final float y;
+        private final float width;
+        private final float height;
 
-    private static record ChannelListPositioningMetaEntry(@NotNull Channel ch, float x, float y, float width, float height) { }
+        public ButtonPositioningMetaEntry(@NotNull Runnable action, float x, float y, float width, float height) {
+            this.action = action;
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+        }
+    }
+
+    private static class ChannelListPositioningMetaEntry {
+        @NotNull
+        private final Channel ch;
+        private final float x;
+        private final float y;
+        private final float width;
+        private final float height;
+
+        public ChannelListPositioningMetaEntry(@NotNull Channel ch, float x, float y, float width, float height) {
+            this.ch = ch;
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+        }
+    }
 
     private static final Color DARKER_YELLOW = new Color(0.5F, 0.5F, 0.0F, 1F);
 
     @NotNull
-    private static DateTimeFormatter timestampFormatter;
+    private static final DateTimeFormatter TIMESTAMP_FORMATTER;
 
     static {
         DateTimeFormatterBuilder builder = new DateTimeFormatterBuilder();
@@ -51,7 +81,7 @@ public class IRCMainScreenComponent implements ScreenComponent, ReactiveComponen
         builder.appendLiteral(':').appendValue(ChronoField.MINUTE_OF_HOUR, 2, 2, SignStyle.NORMAL);
         builder.appendLiteral(':').appendValue(ChronoField.SECOND_OF_MINUTE, 2, 2, SignStyle.NORMAL);
         builder.appendLiteral("] []");
-        timestampFormatter = NullUtils.requireNotNull(builder.toFormatter());
+        TIMESTAMP_FORMATTER = NullUtils.requireNotNull(builder.toFormatter());
     }
 
     @NotNull
@@ -85,7 +115,7 @@ public class IRCMainScreenComponent implements ScreenComponent, ReactiveComponen
     private final GlyphLayout secondaryGlyphLayout = new GlyphLayout(); // We need multiple glyph layout for reasons
 
     @NotNull
-    private static Optional<Channel> selectedChannel = NullUtils.emptyOptional();
+    private static Optional<Channel> selectedChannel = Optional.empty();
 
     private final float senderNickSize = 0.2F;
 
@@ -112,16 +142,16 @@ public class IRCMainScreenComponent implements ScreenComponent, ReactiveComponen
         if (tempFont == null) {
             extension.getLogger().warn("IRCMainScreenComponent: Unable to resolve requested font! Using a completely random font instead.");
             String fontName = NullUtils.requireNotNull(Drawing.getFonts().toArray(new String[0])[0]);
-            font = NullUtils.requireNotNull(Drawing.getFontBitmap(fontName));
+            this.font = NullUtils.requireNotNull(Drawing.getFontBitmap(fontName));
         } else {
-            font = tempFont;
+            this.font = tempFont;
         }
         tempFont = Drawing.getFontBitmap("FRIENDLY");
         if (tempFont == null) {
             extension.getLogger().warn("IRCMainScreenComponent: Unable to resolve requested chat font! Using the main font instead.");
-            chatFont = font;
+            this.chatFont = this.font;
         } else {
-            chatFont = tempFont;
+            this.chatFont = tempFont;
         }
         this.unappliedNick = extension.nick;
         this.unappliedUsername = extension.name;
@@ -134,52 +164,52 @@ public class IRCMainScreenComponent implements ScreenComponent, ReactiveComponen
         y += 20;
         final Vector3 screenCoords = camera.project(new Vector3(x, y, 0.0F));
 
-        String text = configureMode ? "Save configuration" : "Configure";
-        screenCoords.y += renderButton(screenCoords.x, screenCoords.y, getWidth() * channelListSize, text, batch, () -> {
-            if (configureMode) {
-                configureMode = false;
-                for (Runnable action : unappliedConfigChanges) {
+        String text = this.configureMode ? "Save configuration" : "Configure";
+        screenCoords.y += this.renderButton(screenCoords.x, screenCoords.y, this.getWidth() * this.channelListSize, text, batch, () -> {
+            if (this.configureMode) {
+                this.configureMode = false;
+                for (Runnable action : this.unappliedConfigChanges) {
                     action.run();
                 }
-                extension.saveConfig(DataFolderProvider.getProvider().provideAsPath().resolve("galimulatorirc.json"));
+                this.extension.saveConfig(DataFolderProvider.getProvider().provideAsPath().resolve("galimulatorirc.json"));
             } else {
-                configureMode = true;
+                this.configureMode = true;
             }
         });
-        screenCoords.y += renderButton(screenCoords.x, screenCoords.y, getWidth() * channelListSize, "Send message", batch, () -> {
+        screenCoords.y += this.renderButton(screenCoords.x, screenCoords.y, this.getWidth() * this.channelListSize, "Send message", batch, () -> {
             Drawing.textInputBuilder("Send IRC Message", "", "Set the message you want to send")
                 .addHook(message -> {
                     if (message == null) {
                         return; // User aborted send operation
                     }
-                    extension.handleMessage(message, selectedChannel);
+                    this.extension.handleMessage(message, IRCMainScreenComponent.selectedChannel);
                 }).build();
         });
         // Not a button but it still falls under the same area in a graphical sense, so I put it in this method
         text = "Scroll [LIME]" + scroll + "[] Memory [RED]" + (Runtime.getRuntime().totalMemory() / 1_000_000L) + "[] MB.";
-        primaryGlyphLayout.setText(font, text, Color.WHITE, getWidth() * channelListSize - 10, Align.topLeft, true);
-        font.draw(batch, primaryGlyphLayout, screenCoords.x + 7.5F, screenCoords.y);
+        this.primaryGlyphLayout.setText(font, text, Color.WHITE, getWidth() * this.channelListSize - 10, Align.topLeft, true);
+        this.font.draw(batch, this.primaryGlyphLayout, screenCoords.x + 7.5F, screenCoords.y);
     }
 
     private void drawChannels(final float x, final float y, @NotNull Camera camera, SpriteBatch batch) {
-        channelListPositioningMeta.clear();
+        this.channelListPositioningMeta.clear();
         final Vector3 screenCoords = camera.project(new Vector3(x, y, 0.0F));
-        float screenY = screenCoords.y + getHeight();
-        final float width = getWidth() * channelListSize;
+        float screenY = screenCoords.y + this.getHeight();
+        final float width = this.getWidth() * this.channelListSize;
 
-        for (Network network : extension.serverlist.getNetworks()) {
-            screenY -= primaryGlyphLayout.height;
-            primaryGlyphLayout.setText(font, network.name, Color.WHITE, width - 20, Align.topLeft, true);
-            screenY -= primaryGlyphLayout.height;
-            font.draw(batch, primaryGlyphLayout, screenCoords.x + 10, screenY);
+        for (Network network : this.extension.serverlist.getNetworks()) {
+            screenY -= this.primaryGlyphLayout.height;
+            this.primaryGlyphLayout.setText(this.font, network.name, Color.WHITE, width - 20, Align.topLeft, true);
+            screenY -= this.primaryGlyphLayout.height;
+            this.font.draw(batch, this.primaryGlyphLayout, screenCoords.x + 10, screenY);
 
             for (Channel channel : network.getChannels()) {
                 ChannelStatus status = channel.chat().getStatus();
-                screenY -= primaryGlyphLayout.height;
-                primaryGlyphLayout.setText(font, channel.name(), status.getColor(), width - 30, Align.topLeft, true);
-                screenY -= primaryGlyphLayout.height;
-                font.draw(batch, primaryGlyphLayout, screenCoords.x + 20, screenY);
-                channelListPositioningMeta.add(new ChannelListPositioningMetaEntry(channel, screenCoords.x , screenY, width, primaryGlyphLayout.height * 2.0F));
+                screenY -= this.primaryGlyphLayout.height;
+                this.primaryGlyphLayout.setText(this.font, channel.name(), status.getColor(), width - 30, Align.topLeft, true);
+                screenY -= this.primaryGlyphLayout.height;
+                this. font.draw(batch, this.primaryGlyphLayout, screenCoords.x + 20, screenY);
+                this.channelListPositioningMeta.add(new ChannelListPositioningMetaEntry(channel, screenCoords.x , screenY, width, this.primaryGlyphLayout.height * 2.0F));
             }
         }
     }
@@ -192,35 +222,35 @@ public class IRCMainScreenComponent implements ScreenComponent, ReactiveComponen
         final float widthSenders;
         final float widthTotal;
         final Vector3 screenCoords = camera.project(new Vector3(x, y, 0.0F));
-        widthTotal = getWidth() * (1 - channelListSize);
-        widthSenders = widthTotal * senderNickSize;
-        screenXSenders = screenCoords.x + getWidth() * channelListSize;
+        widthTotal = this.getWidth() * (1 - this.channelListSize);
+        widthSenders = widthTotal * this.senderNickSize;
+        screenXSenders = screenCoords.x + this.getWidth() * this.channelListSize;
         screenXMessages = screenXSenders + widthSenders;
-        screenY = screenCoords.y + getHeight();
+        screenY = screenCoords.y + this.getHeight();
 
-        if (selectedChannel.isEmpty()) {
-            primaryGlyphLayout.setText(chatFont, extension.errorMessage, Color.FIREBRICK, widthTotal - 15, Align.topLeft, true);
-            screenY -= primaryGlyphLayout.height * 0.6;
-            chatFont.draw(batch, primaryGlyphLayout, screenXSenders + 5, screenY);
+        if (!IRCMainScreenComponent.selectedChannel.isPresent()) {
+            this.primaryGlyphLayout.setText(this.chatFont, this.extension.errorMessage, Color.FIREBRICK, widthTotal - 15, Align.topLeft, true);
+            screenY -= this.primaryGlyphLayout.height * 0.6;
+            this.chatFont.draw(batch, this.primaryGlyphLayout, screenXSenders + 5, screenY);
             return;
         }
 
-        Channel channel = selectedChannel.get();
+        Channel channel = IRCMainScreenComponent.selectedChannel.get();
 
         List<ChatMessage> messages = channel.chat().getLog();
         if (messages.isEmpty()) {
-            primaryGlyphLayout.setText(chatFont, "No messages in this channel yet.", Color.FIREBRICK, widthTotal - 15, Align.topLeft, true);
-            screenY -= primaryGlyphLayout.height * 0.6;
-            chatFont.draw(batch, primaryGlyphLayout, screenXSenders + 5, screenY);
+            this.primaryGlyphLayout.setText(this.chatFont, "No messages in this channel yet.", Color.FIREBRICK, widthTotal - 15, Align.topLeft, true);
+            screenY -= this.primaryGlyphLayout.height * 0.6;
+            this.chatFont.draw(batch, this.primaryGlyphLayout, screenXSenders + 5, screenY);
             return; // Else an IOOBE would happen in the next lines.
         }
 
         // We want to iterate backwards
         int startPosition = messages.size() + this.scroll;
         if (startPosition <= 0) {
-            primaryGlyphLayout.setText(chatFont, "No older messages.", Color.FIREBRICK, widthTotal - 15, Align.topLeft, true);
-            screenY -= primaryGlyphLayout.height * 0.6;
-            chatFont.draw(batch, primaryGlyphLayout, screenXSenders + 5, screenY);
+            this.primaryGlyphLayout.setText(this.chatFont, "No older messages.", Color.FIREBRICK, widthTotal - 15, Align.topLeft, true);
+            screenY -= this.primaryGlyphLayout.height * 0.6;
+            this.chatFont.draw(batch, this.primaryGlyphLayout, screenXSenders + 5, screenY);
             this.scroll = -messages.size();
             return; // Else an IOOBE would happen at the next line.
         }
@@ -228,25 +258,25 @@ public class IRCMainScreenComponent implements ScreenComponent, ReactiveComponen
         boolean firstMessage = true;
         while (logIterator.previousIndex() != -1) {
             ChatMessage message = logIterator.previous();
-            String leftHandText = timestampFormatter.format(message.timestamp());
+            String leftHandText = IRCMainScreenComponent.TIMESTAMP_FORMATTER.format(message.timestamp());
             String rightHandText = message.message();
             if (message.metamessage()) {
                 leftHandText += "[RED]**[]";
-                Color senderColor = getSenderColor(NullUtils.requireNotNull(message.sender()));
+                Color senderColor = this.getSenderColor(NullUtils.requireNotNull(message.sender()));
                 rightHandText = NullUtils.format("[#%s] %s [] %s", senderColor.toString(), message.sender(), message.message());
             } else {
                 leftHandText += message.sender();
             }
-            primaryGlyphLayout.setText(chatFont, leftHandText, getSenderColor(NullUtils.requireNotNull(message.sender())), widthSenders - 15, Align.topLeft, false);
-            float leftHandSize = Math.max(primaryGlyphLayout.width, screenXMessages) + 10;
-            secondaryGlyphLayout.setText(chatFont, rightHandText, Color.BLACK, widthTotal - leftHandSize - 10, Align.bottomLeft, true);
+            this.primaryGlyphLayout.setText(this.chatFont, leftHandText, this.getSenderColor(NullUtils.requireNotNull(message.sender())), widthSenders - 15, Align.topLeft, false);
+            float leftHandSize = Math.max(this.primaryGlyphLayout.width, screenXMessages) + 10;
+            this.secondaryGlyphLayout.setText(this.chatFont, rightHandText, Color.BLACK, widthTotal - leftHandSize - 10, Align.bottomLeft, true);
             if (firstMessage) {
                 screenY -= 10;
                 firstMessage = false;
             }
-            chatFont.draw(batch, primaryGlyphLayout, screenXSenders + 5, screenY);
-            chatFont.draw(batch, secondaryGlyphLayout, leftHandSize, screenY);
-            screenY -= Math.max(primaryGlyphLayout.height, secondaryGlyphLayout.height) * 1.2;
+            this.chatFont.draw(batch, this.primaryGlyphLayout, screenXSenders + 5, screenY);
+            this.chatFont.draw(batch, this.secondaryGlyphLayout, leftHandSize, screenY);
+            screenY -= Math.max(this.primaryGlyphLayout.height, this.secondaryGlyphLayout.height) * 1.2;
             if (screenY < screenCoords.y) {
                 return; // No reason to render more
             }
@@ -262,94 +292,94 @@ public class IRCMainScreenComponent implements ScreenComponent, ReactiveComponen
         final float widthKey;
         {
             final Vector3 screenCoords = camera.project(new Vector3(x, y, 0.0F));
-            widthKey = getWidth() * (1 - channelListSize) * senderNickSize;
-            screenXKey = screenCoords.x + getWidth() * channelListSize;
+            widthKey = this.getWidth() * (1 - this.channelListSize) * this.senderNickSize;
+            screenXKey = screenCoords.x + this.getWidth() * this.channelListSize;
             screenXValue = screenXKey + widthKey;
-            widthValue = getWidth() * (1 - channelListSize) * (1 - senderNickSize);
-            screenY = screenCoords.y + getHeight();
+            widthValue = this.getWidth() * (1 - this.channelListSize) * (1 - this.senderNickSize);
+            screenY = screenCoords.y + this.getHeight();
         }
         screenY -= 20.0F;
 
-        primaryGlyphLayout.setText(font, "Changes only fully apply with a restart", Color.RED, widthKey, Align.topLeft, true);
-        font.draw(batch, primaryGlyphLayout, screenXKey + 10, screenY);
-        screenY -= primaryGlyphLayout.height * 1.1F;
+        this.primaryGlyphLayout.setText(font, "Changes only fully apply with a restart", Color.RED, widthKey, Align.topLeft, true);
+        this.font.draw(batch, this.primaryGlyphLayout, screenXKey + 10, screenY);
+        screenY -= this.primaryGlyphLayout.height * 1.1F;
 
-        float buttonHeight = renderButton(screenXValue, screenY, widthValue, unappliedUsername, batch, () -> {
+        float buttonHeight = this.renderButton(screenXValue, screenY, widthValue, this.unappliedUsername, batch, () -> {
             // Change name
-            Drawing.textInputBuilder("Change IRC username", "", "[WHITE]Current value is [GRAY]" + extension.name).setInitialText(extension.name)
+            Drawing.textInputBuilder("Change IRC username", "", "[WHITE]Current value is [GRAY]" + this.extension.name).setInitialText(extension.name)
                 .addHook(string -> {
                     if (string == null) {
                         return;
                     }
-                    unappliedUsername = string;
-                    unappliedConfigChanges.add(() -> {
-                        extension.name = string;
+                    this.unappliedUsername = string;
+                    this.unappliedConfigChanges.add(() -> {
+                        this.extension.name = string;
                     });
-                    getParentScreen().markDirty();
+                    this.getParentScreen().markDirty();
                 }).build();
         });
-        primaryGlyphLayout.setText(font, "Set Username", Color.WHITE, widthKey, Align.topLeft, true);
-        font.draw(batch, primaryGlyphLayout, screenXKey + 10, screenY);
+        this.primaryGlyphLayout.setText(font, "Set Username", Color.WHITE, widthKey, Align.topLeft, true);
+        this.font.draw(batch, this.primaryGlyphLayout, screenXKey + 10, screenY);
 
         screenY -= buttonHeight;
-        buttonHeight = renderButton(screenXValue, screenY, widthValue, unappliedNick, batch, () -> {
+        buttonHeight = this.renderButton(screenXValue, screenY, widthValue, unappliedNick, batch, () -> {
             // Change name
             Drawing.textInputBuilder("Change IRC nickname", "", "[WHITE]Current value is [GRAY]" + extension.nick).setInitialText(extension.nick)
                 .addHook(string -> {
                     if (string == null) {
                         return;
                     }
-                    unappliedNick = string;
-                    unappliedConfigChanges.add(() -> {
-                        extension.nick = string;
+                    this.unappliedNick = string;
+                    this.unappliedConfigChanges.add(() -> {
+                        this.extension.nick = string;
                     });
-                    getParentScreen().markDirty();
+                    this.getParentScreen().markDirty();
                 }).build();
         });
-        primaryGlyphLayout.setText(font, "Set Nickname", Color.WHITE, widthKey, Align.topLeft, true);
-        font.draw(batch, primaryGlyphLayout, screenXKey + 10, screenY);
+        this.primaryGlyphLayout.setText(this.font, "Set Nickname", Color.WHITE, widthKey, Align.topLeft, true);
+        this.font.draw(batch, this.primaryGlyphLayout, screenXKey + 10, screenY);
 
         screenY -= buttonHeight;
-        buttonHeight = renderButton(screenXValue, screenY, widthValue, unappliedRealname, batch, () -> {
+        buttonHeight = this.renderButton(screenXValue, screenY, widthValue, this.unappliedRealname, batch, () -> {
             // Change name
-            Drawing.textInputBuilder("Change IRC realname", "", "[WHITE]Current value is [GRAY]" + extension.realname).setInitialText(extension.realname)
+            Drawing.textInputBuilder("Change IRC realname", "", "[WHITE]Current value is [GRAY]" + this.extension.realname).setInitialText(extension.realname)
                 .addHook(string -> {
                     if (string == null) {
                         return;
                     }
-                    unappliedRealname = string;
-                    unappliedConfigChanges.add(() -> {
-                        extension.realname = string;
+                    this.unappliedRealname = string;
+                    this.unappliedConfigChanges.add(() -> {
+                        this.extension.realname = string;
                     });
-                    getParentScreen().markDirty();
+                    this.getParentScreen().markDirty();
                 }).build();
         });
-        primaryGlyphLayout.setText(font, "Set real name", Color.WHITE, widthKey, Align.topLeft, true);
-        font.draw(batch, primaryGlyphLayout, screenXKey + 10, screenY);
+        this.primaryGlyphLayout.setText(this.font, "Set real name", Color.WHITE, widthKey, Align.topLeft, true);
+        this.font.draw(batch, this.primaryGlyphLayout, screenXKey + 10, screenY);
 
         screenY -= buttonHeight;
-        buttonHeight = renderButton(screenXValue, screenY, widthValue, unappliedDesktopNotify + " (might not work on all machines)", batch, () -> {
+        buttonHeight = this.renderButton(screenXValue, screenY, widthValue, this.unappliedDesktopNotify + " (might not work on all machines)", batch, () -> {
             // Toggle desktop-notify option
-            unappliedDesktopNotify = !unappliedDesktopNotify;
-            unappliedConfigChanges.add(() -> {
-                extension.desktopNotifications = unappliedDesktopNotify;
+            this.unappliedDesktopNotify = !this.unappliedDesktopNotify;
+            this.unappliedConfigChanges.add(() -> {
+                this.extension.desktopNotifications = this.unappliedDesktopNotify;
             });
-            getParentScreen().markDirty();
+            this.getParentScreen().markDirty();
         });
-        primaryGlyphLayout.setText(font, "Send desktop notifications", Color.WHITE, widthKey, Align.topLeft, true);
-        font.draw(batch, primaryGlyphLayout, screenXKey + 10, screenY);
+        this.primaryGlyphLayout.setText(this.font, "Send desktop notifications", Color.WHITE, widthKey, Align.topLeft, true);
+        this.font.draw(batch, this.primaryGlyphLayout, screenXKey + 10, screenY);
 
         screenY -= buttonHeight;
-        buttonHeight = renderButton(screenXValue, screenY, widthValue, NullUtils.requireNotNull(Boolean.toString(unappliedCriticalNotify)), batch, () -> {
+        buttonHeight = this.renderButton(screenXValue, screenY, widthValue, NullUtils.requireNotNull(Boolean.toString(this.unappliedCriticalNotify)), batch, () -> {
             // Toggle desktop-notify option
-            unappliedCriticalNotify = !unappliedCriticalNotify;
-            unappliedConfigChanges.add(() -> {
-                extension.criticalNotification = unappliedCriticalNotify;
+            this.unappliedCriticalNotify = !this.unappliedCriticalNotify;
+            this.unappliedConfigChanges.add(() -> {
+                this.extension.criticalNotification = this.unappliedCriticalNotify;
             });
-            getParentScreen().markDirty();
+            this.getParentScreen().markDirty();
         });
-        primaryGlyphLayout.setText(font, "Use critical category", Color.WHITE, widthKey, Align.topLeft, true);
-        font.draw(batch, primaryGlyphLayout, screenXKey + 10, screenY);
+        this.primaryGlyphLayout.setText(this.font, "Use critical category", Color.WHITE, widthKey, Align.topLeft, true);
+        this.font.draw(batch, this.primaryGlyphLayout, screenXKey + 10, screenY);
     }
 
     @Override
@@ -366,52 +396,83 @@ public class IRCMainScreenComponent implements ScreenComponent, ReactiveComponen
     @Override
     @NotNull
     public Screen getParentScreen() {
-        return parent;
+        return this.parent;
     }
 
     @SuppressWarnings("null")
     @NotNull
     private Color getSenderColor(@NotNull String sender) {
-        return switch (sender.hashCode() % 32) {
-        case 0 -> Color.BLACK;
-        case 1 -> Color.BLUE;
-        case 2 -> Color.BROWN;
-        case 3 -> Color.CHARTREUSE;
-        case 4 -> Color.CORAL;
-        case 5 -> Color.CYAN;
-        case 6 -> Color.DARK_GRAY;
-        case 7 -> Color.FIREBRICK;
-        case 8 -> Color.FOREST;
-        case 9 -> Color.GOLD;
-        case 10 -> Color.GOLDENROD;
-        case 11 -> Color.GRAY;
-        case 12 -> Color.GREEN;
-        case 13 -> Color.LIGHT_GRAY;
-        case 14 -> Color.LIME;
-        case 15 -> Color.MAGENTA;
-        case 16 -> Color.MAROON;
-        case 17 -> Color.NAVY;
-        case 18 -> Color.OLIVE;
-        case 19 -> Color.ORANGE;
-        case 20 -> Color.PINK;
-        case 21 -> Color.PURPLE;
-        case 22 -> Color.RED;
-        case 23 -> Color.ROYAL;
-        case 24 -> Color.SALMON;
-        case 25 -> Color.SCARLET;
-        case 26 -> Color.SKY;
-        case 27 -> Color.SLATE;
-        case 28 -> Color.TAN;
-        case 29 -> Color.TEAL;
-        case 30 -> Color.VIOLET;
-        case 31 -> DARKER_YELLOW;
-        default -> Color.BLACK;
-        };
+        switch (sender.hashCode() % 32) {
+        case 0:
+            return Color.BLACK;
+        case 1:
+            return Color.BLUE;
+        case 2:
+            return Color.BROWN;
+        case 3:
+            return Color.CHARTREUSE;
+        case 4:
+            return Color.CORAL;
+        case 5:
+            return Color.CYAN;
+        case 6:
+            return Color.DARK_GRAY;
+        case 7:
+            return Color.FIREBRICK;
+        case 8:
+            return Color.FOREST;
+        case 9:
+            return Color.GOLD;
+        case 10:
+            return Color.GOLDENROD;
+        case 11:
+            return Color.GRAY;
+        case 12:
+            return Color.GREEN;
+        case 13:
+            return Color.LIGHT_GRAY;
+        case 14:
+            return Color.LIME;
+        case 15:
+            return Color.MAGENTA;
+        case 16:
+            return Color.MAROON;
+        case 17:
+            return Color.OLIVE;
+        case 18:
+            return Color.ORANGE;
+        case 19:
+            return Color.PINK;
+        case 20:
+            return Color.PURPLE;
+        case 21:
+            return Color.RED;
+        case 22:
+            return Color.ROYAL;
+        case 23:
+            return Color.SALMON;
+        case 24:
+            return Color.SCARLET;
+        case 25:
+            return Color.SKY;
+        case 26:
+            return Color.SLATE;
+        case 28:
+            return Color.TAN;
+        case 29:
+            return Color.TEAL;
+        case 30:
+            return Color.VIOLET;
+        case 31:
+            return IRCMainScreenComponent.DARKER_YELLOW;
+        default:
+            return Color.BLACK;
+        }
     }
 
     @Override
     public int getWidth() {
-        return parent.getInnerWidth() + 20;
+        return this.parent.getInnerWidth() + 20;
     }
 
     @Override
@@ -421,29 +482,29 @@ public class IRCMainScreenComponent implements ScreenComponent, ReactiveComponen
 
     @Override
     public void onClick(int screenX, int screenY, int componentX, int componentY, @NotNull Camera camera) {
-        for (ChannelListPositioningMetaEntry metaentry : channelListPositioningMeta) {
+        for (ChannelListPositioningMetaEntry metaentry : this.channelListPositioningMeta) {
             if (metaentry.x < screenX
                     && screenX < (metaentry.x + metaentry.width)
                     && (screenY) < metaentry.y
                     && (screenY) > (metaentry.y - metaentry.height)) {
-                if (selectedChannel.isEmpty()) {
-                    selectedChannel = NullUtils.<Channel>asOptional(metaentry.ch);
-                } else if (selectedChannel.get() != metaentry.ch) {
-                    scroll = 0;
-                    selectedChannel.get().chat().setStatus(ChannelStatus.READ);
-                    selectedChannel = NullUtils.<Channel>asOptional(metaentry.ch);
+                if (!IRCMainScreenComponent.selectedChannel.isPresent()) {
+                    IRCMainScreenComponent.selectedChannel = Optional.of(metaentry.ch);
+                } else if (IRCMainScreenComponent.selectedChannel.get() != metaentry.ch) {
+                    this.scroll = 0;
+                    IRCMainScreenComponent.selectedChannel.get().chat().setStatus(ChannelStatus.READ);
+                    IRCMainScreenComponent.selectedChannel = Optional.of(metaentry.ch);
                 }
-                metaentry.ch().chat().setStatus(ChannelStatus.SELECTED);
+                metaentry.ch.chat().setStatus(ChannelStatus.SELECTED);
                 return;
             }
         }
-        for (ButtonPositioningMetaEntry metaentry : buttonPositioningMeta) {
+        for (ButtonPositioningMetaEntry metaentry : this.buttonPositioningMeta) {
             if (metaentry.x < screenX
                     && screenX < (metaentry.x + metaentry.width)
                     && (screenY) < metaentry.y
                     && (screenY) > (metaentry.y - metaentry.height)) {
                 metaentry.action.run();
-                getParentScreen().markDirty();
+                this.getParentScreen().markDirty();
                 return;
             }
         }
@@ -465,12 +526,12 @@ public class IRCMainScreenComponent implements ScreenComponent, ReactiveComponen
             return;
         }
         this.scroll += amount;
-        getParentScreen().markDirty();
+        this.getParentScreen().markDirty();
     }
 
     @Override
     public int renderAt(final float x, final float y, final @NotNull Camera camera) {
-        buttonPositioningMeta.clear();
+        this.buttonPositioningMeta.clear();
         NinePatch windowNine = Drawing.getTextureProvider().getWindowNinepatch();
         DrawingImpl drawing = Drawing.requireInstance();
         SpriteBatch batch = drawing.getMainDrawingBatch();
@@ -489,18 +550,18 @@ public class IRCMainScreenComponent implements ScreenComponent, ReactiveComponen
         windowNine.draw(batch, screenCoords.x, screenCoords.y, width, height);
 
         // Server + Channel List frame
-        windowNine.draw(batch, screenCoords.x, screenCoords.y, width * channelListSize, height);
+        windowNine.draw(batch, screenCoords.x, screenCoords.y, width * this.channelListSize, height);
 
         // Chat frame
-        windowNine.draw(batch, screenCoords.x + width * channelListSize, screenCoords.y, width * (1 - channelListSize), height);
+        windowNine.draw(batch, screenCoords.x + width * this.channelListSize, screenCoords.y, width * (1 - this.channelListSize), height);
 
-        drawChannels(x, y, camera, batch);
-        drawAdditionalButtons(x, y, camera, batch);
+        this.drawChannels(x, y, camera, batch);
+        this.drawAdditionalButtons(x, y, camera, batch);
 
-        if (configureMode) {
-            drawConfigMode(x, y, camera, batch);
+        if (this.configureMode) {
+            this.drawConfigMode(x, y, camera, batch);
         } else {
-            drawChat(x, y, camera, batch);
+            this.drawChat(x, y, camera, batch);
         }
 
         if (wasNotDrawing) {
@@ -511,14 +572,14 @@ public class IRCMainScreenComponent implements ScreenComponent, ReactiveComponen
 
     private float renderButton(float screenX, float screenY, float width,
             @NotNull String text, @NotNull SpriteBatch batch, @NotNull Runnable action) {
-        primaryGlyphLayout.setText(font, text, Color.WHITE, width - 15, Align.center, true);
+        this.primaryGlyphLayout.setText(this.font, text, Color.WHITE, width - 15, Align.center, true);
         NinePatch background = Drawing.getTextureProvider().getWindowNinepatch();
         batch.setColor(Color.ORANGE);
-        background.draw(batch, screenX, screenY - primaryGlyphLayout.height * 2.0F, width, primaryGlyphLayout.height * 3.0F);
-        font.draw(batch, primaryGlyphLayout, screenX + 7.5F, screenY);
-        float buttonY = screenY + primaryGlyphLayout.height;
-        float buttonHeight = primaryGlyphLayout.height * 3.0F;
-        buttonPositioningMeta.add(new ButtonPositioningMetaEntry(action, screenX, buttonY, width, buttonHeight));
+        background.draw(batch, screenX, screenY - this.primaryGlyphLayout.height * 2.0F, width, this.primaryGlyphLayout.height * 3.0F);
+        this.font.draw(batch, this.primaryGlyphLayout, screenX + 7.5F, screenY);
+        float buttonY = screenY + this.primaryGlyphLayout.height;
+        float buttonHeight = this.primaryGlyphLayout.height * 3.0F;
+        this.buttonPositioningMeta.add(new ButtonPositioningMetaEntry(action, screenX, buttonY, width, buttonHeight));
         return buttonHeight;
     }
 }

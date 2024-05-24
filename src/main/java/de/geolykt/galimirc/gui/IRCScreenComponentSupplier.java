@@ -21,6 +21,6 @@ public class IRCScreenComponentSupplier implements ComponentSupplier {
     @Override
     public void supplyComponent(@NotNull Screen screen,
             @NotNull List<@NotNull ScreenComponent> existingComponents) {
-        existingComponents.add(new IRCMainScreenComponent(screen, extension));
+        existingComponents.add(new IRCMainScreenComponent(screen, this.extension));
     }
 }

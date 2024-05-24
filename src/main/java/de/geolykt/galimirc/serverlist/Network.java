@@ -12,8 +12,6 @@ import java.util.Set;
 
 import org.jetbrains.annotations.NotNull;
 
-import de.geolykt.starloader.api.NullUtils;
-
 public class Network {
 
     @NotNull
@@ -48,37 +46,37 @@ public class Network {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof Network other) {
-            return this.name.equals(other.name); // We only really need the network be unique by name. Furthermore, ServerList enforces this
+        if (obj instanceof Network) {
+            return this.name.equals(((Network) obj).name); // We only really need the network be unique by name. Furthermore, ServerList enforces this
         }
         return false;
     }
 
     @NotNull
     public Optional<Channel> getChannelByName(@NotNull String name) {
-        return NullUtils.asOptional(channelNames.get(name.toLowerCase(Locale.ROOT)));
+        return Optional.ofNullable(this.channelNames.get(name.toLowerCase(Locale.ROOT)));
     }
 
     @SuppressWarnings("null")
     @NotNull
     public List<Channel> getChannels() {
-        return Collections.unmodifiableList(channels);
+        return Collections.unmodifiableList(this.channels);
     }
 
     @NotNull
     public Iterable<String> getMonitoredChannels() {
-        return monitored;
+        return this.monitored;
     }
 
     @SuppressWarnings("null")
     @NotNull
     public List<Server> getServers() {
-        return Collections.unmodifiableList(servers);
+        return Collections.unmodifiableList(this.servers);
     }
 
     @Override
     public int hashCode() {
-        return name.hashCode(); // We only really need the network be unique by name
+        return this.name.hashCode(); // We only really need the network be unique by name
     }
 
     public boolean isMonitoring(@NotNull String channel) {

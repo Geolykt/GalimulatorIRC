@@ -3,12 +3,14 @@ package de.geolykt.galimirc;
 import org.jetbrains.annotations.NotNull;
 import org.kitteh.irc.client.library.Client;
 
+import com.badlogic.gdx.Input.Keys;
+
 import de.geolykt.galimirc.gui.GUIManager;
-import de.geolykt.starloader.api.Galimulator;
 import de.geolykt.starloader.api.event.EventHandler;
 import de.geolykt.starloader.api.event.Listener;
 import de.geolykt.starloader.api.event.lifecycle.ApplicationStartedEvent;
 import de.geolykt.starloader.api.event.lifecycle.ApplicationStopEvent;
+import de.geolykt.starloader.api.gui.KeystrokeInputHandler;
 import de.geolykt.starloader.api.resource.DataFolderProvider;
 
 public class GalimIRCEventListener implements Listener {
@@ -22,19 +24,19 @@ public class GalimIRCEventListener implements Listener {
 
     @EventHandler
     public void onApplicationStartFinish(ApplicationStartedEvent e) {
-        extension.guiManager = new GUIManager(extension);
-        Galimulator.registerKeybind(new OpenIRCWindowKeybind(extension));
+        this.extension.guiManager = new GUIManager(this.extension);
+        KeystrokeInputHandler.getInstance().registerKeybind(new OpenIRCWindowKeybind(this.extension), Keys.I);
 
-        extension.loadConfig(DataFolderProvider.getProvider().provideAsPath().resolve("galimulatorirc.json"));
-        extension.startClients();
+        this.extension.loadConfig(DataFolderProvider.getProvider().provideAsPath().resolve("galimulatorirc.json"));
+        this.extension.startClients();
     }
 
     @EventHandler
     public void onShutdown(ApplicationStopEvent e) {
-        extension.getLogger().info("Shutting down IRC Connections...");
+        this.extension.getLogger().info("Shutting down IRC Connections...");
         for (Client client : extension.ircClients) {
             client.shutdown("Game closed.");
         }
-        extension.getLogger().info("All IRC Connections shut down.");
+        this.extension.getLogger().info("All IRC Connections shut down.");
     }
 }

@@ -1,17 +1,13 @@
-<b>Due to the Log4j security vulnerabillity, any Starloader-launcher version below 3.0.0 should not be used with this mod!
-I am not kidding, I have seen this vulnerabillity being used across a few channels.</b>
-Starloader-launcher 3.+ is safe to use as it uses logback instead of Log4j.
-
 # Galimulator IRC
 
-A galimulator mod that adds a basic, yet powerfull IRC Client.
+A galimulator mod that adds a basic, yet powerful IRC Client.
 The goal of this client is to be the IRC Client of my dreams
 
 ## Existing features
 
-- Multi-network and multi-channel capabillity
+- Multi-network and multi-channel capability
 - Easily join networks and channels via /connect and /join.
-- Per-network SASL and Nickserv integration (not tested though)
+- Per-network SASL and NickServ integration (not tested though)
 - Desktop notifications via Notify-send (usually only comes packaged on linux systems)
 - Channel monitoring
 
@@ -29,8 +25,14 @@ The goal of this client is to be the IRC Client of my dreams
 - send monitored messages in galimulator's bulletin log
 - leaving networks and channels
 
+# Minimum requirements
+
+- SLL (any version and flavour that can run the other dependencies)
+- SLAPI 2.0.0-a20240524.1 or higher (might run on older versions too, but hasn't been tested to do so)
+- Java 8
+
 ## Screenshots
 
-<img src="https://files.geolykt.de/GalimIRC-example-1.png" />
-<img src="https://files.geolykt.de/GalimIRC-example-2.png" />
-<img src="https://files.geolykt.de/GalimIRC-example-3.png" />
+<img src="https://geolykt.de/files/GalimIRC-example-1.png" />
+<img src="https://geolykt.de/files/GalimIRC-example-2.png" />
+<img src="https://geolykt.de/files/GalimIRC-example-3.png" />

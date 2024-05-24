@@ -4,29 +4,32 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>de.geolykt</groupId>
     <artifactId>galimirc</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>GalimulatorIRC</name>
     <description>A simple IRC Client for galimulator</description>
+    <inceptionYear>2021</inceptionYear>
 
     <repositories>
         <repository>
-            <id>geolykt-maven</id>
-            <url>https://geolykt.de/maven</url>
+            <id>stianloader</id>
+            <url>https://stianloader.org/maven/</url>
         </repository>
     </repositories>
 
     <dependencies>
+        <!-- https://stianloader.org/maven/de/geolykt/starloader-api/ -->
         <dependency>
             <groupId>de.geolykt</groupId>
             <artifactId>starloader-api</artifactId>
-            <version>1.5.0</version>
+            <version>2.0.0-a20240523</version>
             <scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.spongepowered</groupId>
-                    <artifactId>mixin</artifactId> <!-- We don't use Mixins -->
-                </exclusion>
-            </exclusions>
+        </dependency>
+        <!-- https://stianloader.org/maven/org/stianloader/launcher-micromixin/ -->
+        <dependency>
+            <groupId>org.stianloader</groupId>
+            <artifactId>launcher-micromixin</artifactId>
+            <version>4.0.0-a20240512</version>
+            <scope>provided</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.kitteh.irc/client-lib -->
         <dependency>
@@ -46,20 +49,34 @@
 
     <build>
         <defaultGoal>clean package</defaultGoal>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+            <resource>
+                <directory>.</directory>
+                <includes>
+                    <include>LICENSE</include>
+                    <include>LICENSE.md</include>
+                </includes>
+                <targetPath>META-INF/LICENSES/${project.artifactId}</targetPath>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
+                <version>3.13.0</version>
                 <configuration>
-                    <target>16</target>
-                    <source>16</source>
+                    <target>1.8</target>
+                    <source>1.8</source>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.3.0-SNAPSHOT</version>
+                <version>3.5.3</version>
                 <executions>
                     <execution>
                         <phase>package</phase>

@@ -11,13 +11,19 @@ public enum ChannelStatus {
     UNREAD_PINGS;
 
     public Color getColor() {
-        return switch (this) {
-        case READ -> Color.WHITE;
-        case UNREAD_MESSAGES -> Color.DARK_GRAY;
-        case UNREAD_JOINS -> Color.SKY;
-        case UNREAD_PINGS -> Color.MAGENTA;
-        case SELECTED -> Color.LIME;
-        default -> Color.FIREBRICK;
-        };
+        switch (this) {
+            case READ:
+                return Color.WHITE;
+            case UNREAD_MESSAGES:
+                return Color.DARK_GRAY;
+            case UNREAD_JOINS:
+                return Color.SKY;
+            case UNREAD_PINGS:
+                return Color.MAGENTA;
+            case SELECTED:
+                return Color.LIME;
+            default:
+                return Color.FIREBRICK;
+        }
     }
 }
