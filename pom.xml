@@ -35,7 +35,7 @@
         <dependency>
             <groupId>org.kitteh.irc</groupId>
             <artifactId>client-lib</artifactId>
-            <version>8.0.0</version>
+            <version>9.0.0</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>
